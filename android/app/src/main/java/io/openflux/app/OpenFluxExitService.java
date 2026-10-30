@@ -180,7 +180,7 @@ public final class OpenFluxExitService extends Service {
         if (!CaptchaActivity.pending()) return false;
         String before = status;
         status = "Нужна проверка";
-        lastError = Mobile.pendingCaptchaOwn() || !Mobile.pendingCaptchaHTML().isEmpty()
+        lastError = Mobile.pendingPromptOwn() || !Mobile.pendingPromptHTML().isEmpty()
                 ? "Транспорт просит настройку - откройте уведомление"
                 : "Яндекс запросил проверку - откройте уведомление";
         boolean solved = CaptchaActivity.awaitIfPending(this, () -> isCurrent(session));

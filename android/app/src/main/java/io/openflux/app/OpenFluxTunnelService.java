@@ -291,7 +291,7 @@ public final class OpenFluxTunnelService extends VpnService {
         for (int attempt = 0; isCurrent(session) && !Mobile.isConnected() && attempt < 120; attempt++) {
             // Only the phone's own checks block connecting; the node's are
             // handled by the health checker once the tunnel is up.
-            if (CaptchaActivity.pending() && Mobile.pendingCaptchaProxy().isEmpty()) {
+            if (CaptchaActivity.pending() && Mobile.pendingPromptProxy().isEmpty()) {
                 if (!awaitCaptcha(session)) {
                     if (isCurrent(session)) fail(session, "Проверка не пройдена");
                     return;
@@ -460,7 +460,7 @@ public final class OpenFluxTunnelService extends VpnService {
 
     private boolean awaitCaptcha(int session) {
         if (!CaptchaActivity.pending()) return false;
-        if (!Mobile.pendingCaptchaProxy().isEmpty()) {
+        if (!Mobile.pendingPromptProxy().isEmpty()) {
             // The node's own document carrier is stuck; the tunnel itself
             // keeps working over another transport, so the status stays.
             lastError = "Нода просит пройти проверку Яндекса - откройте уведомление";
@@ -469,7 +469,7 @@ public final class OpenFluxTunnelService extends VpnService {
             return solved;
         }
         status = "Нужна проверка";
-        lastError = Mobile.pendingCaptchaOwn() || !Mobile.pendingCaptchaHTML().isEmpty()
+        lastError = Mobile.pendingPromptOwn() || !Mobile.pendingPromptHTML().isEmpty()
                 ? "Транспорт просит настройку - откройте уведомление"
                 : "Яндекс запросил проверку - откройте уведомление";
         boolean solved = CaptchaActivity.awaitIfPending(this, () -> isCurrent(session));

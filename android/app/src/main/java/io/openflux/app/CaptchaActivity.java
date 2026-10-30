@@ -87,7 +87,7 @@ public class CaptchaActivity extends Activity {
     // Whether the core waits on a page: a real site's (URL) or a script's
     // inline one (HTML only, no URL).
     static boolean pending() {
-        return !Mobile.pendingCaptchaURL().isEmpty() || !Mobile.pendingCaptchaHTML().isEmpty();
+        return !Mobile.pendingPromptURL().isEmpty() || !Mobile.pendingPromptHTML().isEmpty();
     }
 
     static void initCookieStore(Context context) {
@@ -106,9 +106,9 @@ public class CaptchaActivity extends Activity {
         Intent open = new Intent(context, CaptchaActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent content = PendingIntent.getActivity(
                 context, 1, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        boolean login = "login".equals(Mobile.pendingCaptchaReason());
-        boolean remote = !Mobile.pendingCaptchaProxy().isEmpty();
-        boolean own = Mobile.pendingCaptchaOwn() || !Mobile.pendingCaptchaHTML().isEmpty();
+        boolean login = "login".equals(Mobile.pendingPromptReason());
+        boolean remote = !Mobile.pendingPromptProxy().isEmpty();
+        boolean own = Mobile.pendingPromptOwn() || !Mobile.pendingPromptHTML().isEmpty();
         String title = own ? "OpenFlux: транспорт просит настройку" : remote
                 ? (login ? "OpenFlux: ноде нужен вход в Яндекс" : "OpenFlux: нода просит пройти проверку")
                 : (login ? "OpenFlux: нужен вход в Яндекс" : "OpenFlux: нужна проверка");
@@ -134,17 +134,17 @@ public class CaptchaActivity extends Activity {
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        String reason = Mobile.pendingCaptchaReason();
+        String reason = Mobile.pendingPromptReason();
         settingsMode = getIntent().hasExtra(EXTRA_SETTINGS_HTML);
         if (settingsMode) {
             ownHtml = getIntent().getStringExtra(EXTRA_SETTINGS_HTML);
             startUrl = "";
             reason = getIntent().getStringExtra(EXTRA_TITLE);
         } else {
-            startUrl = Mobile.pendingCaptchaURL();
-            String html = Mobile.pendingCaptchaHTML();
+            startUrl = Mobile.pendingPromptURL();
+            String html = Mobile.pendingPromptHTML();
             if (!html.isEmpty()) ownHtml = html;
-            else if (Mobile.pendingCaptchaOwn()) ownOrigin = loopbackOrigin(startUrl);
+            else if (Mobile.pendingPromptOwn()) ownOrigin = loopbackOrigin(startUrl);
             if (startUrl.isEmpty() && ownHtml == null) {
                 finish();
                 return;
@@ -153,7 +153,7 @@ public class CaptchaActivity extends Activity {
         boolean own = ownHtml != null || ownOrigin != null;
         boolean login = "login".equals(reason);
         // A script's page never goes through the exit's proxy: it is inline or loopback.
-        proxy = own ? "" : Mobile.pendingCaptchaProxy();
+        proxy = own ? "" : Mobile.pendingPromptProxy();
         boolean remote = !proxy.isEmpty();
 
         TextView title = new TextView(this);
@@ -277,7 +277,7 @@ public class CaptchaActivity extends Activity {
             if (header.length() > 0) header.append("; ");
             header.append(part);
         }
-        String error = Mobile.submitCaptchaCookies(header.toString());
+        String error = Mobile.submitPromptCookies(header.toString());
         if (error != null && !error.isEmpty()) {
             Toast.makeText(this, error, Toast.LENGTH_LONG).show();
             return;
@@ -288,7 +288,7 @@ public class CaptchaActivity extends Activity {
     }
 
     private void cancel() {
-        if (!submitted && !settingsMode) Mobile.cancelCaptcha();
+        if (!submitted && !settingsMode) Mobile.cancelPrompt();
         finish();
     }
 
@@ -301,7 +301,7 @@ public class CaptchaActivity extends Activity {
             finish();
             return;
         }
-        String error = Mobile.submitCaptchaData(json);
+        String error = Mobile.submitPromptData(json);
         if (error != null && !error.isEmpty()) {
             Toast.makeText(this, error, Toast.LENGTH_LONG).show();
             return;
