@@ -45,9 +45,11 @@ jobs:
       - name: Check test runtimes
         run: go version
       - name: Test core
-        run: go test -timeout 5m -count=1 ./core/utils/...
+        working-directory: core
+        run: go test -timeout 5m -count=1 ./utils/...
       - name: Vet
-        run: go vet ./core/...
+        working-directory: core
+        run: go vet ./...
 
   build:
     name: Build (${{ matrix.target }})
