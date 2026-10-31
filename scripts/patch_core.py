@@ -118,6 +118,8 @@ patch_file(path_mobile, old_m_stop, new_m_stop)
 
 # 3. proxy.go
 path_proxy = os.path.join(base, "core", "mobile", "proxy.go")
+old_p_import = '\t"fmt"\n\t"strings"'
+new_p_import = '\t"fmt"\n\t"net/http"\n\t"strings"'
 old_p_stop = """\tif stream != nil {
 \t\tstream.Stop()
 \t}
@@ -130,6 +132,7 @@ new_p_stop = """\tif stream != nil {
 \t}
 }"""
 
+patch_file(path_proxy, old_p_import, new_p_import)
 patch_file(path_proxy, old_p_stop, new_p_stop)
 
 # 4. streamnet.go
