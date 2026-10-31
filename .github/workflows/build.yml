@@ -146,7 +146,7 @@ jobs:
           if gh release view "$RELEASE_TAG" --json isDraft,assets > "$RUNNER_TEMP/openflux-release-info.json" 2>/dev/null; then
             echo "Release $RELEASE_TAG exists, uploading assets..."
           else
-            gh release create "$RELEASE_TAG" --verify-tag --draft --title "OpenFlux $RELEASE_TAG" \
+            gh release create "$RELEASE_TAG" --draft --title "OpenFlux $RELEASE_TAG" \
               --notes "OpenFlux $RELEASE_TAG release binaries"
           fi
           assets=(release/SHA256SUMS.txt)

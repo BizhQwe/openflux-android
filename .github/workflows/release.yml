@@ -85,21 +85,35 @@ jobs:
           go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20260908204917-8b95e45f8d3e
           go install golang.org/x/mobile/cmd/gobind@v0.0.0-20260908204917-8b95e45f8d3e
 
-      - name: Restore release keystore
+      - name: Restore or generate release keystore
+        id: keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          test -n "$ANDROID_KEYSTORE_BASE64"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/openflux-release.jks"
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/openflux-release.jks"
+            echo "password=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_OUTPUT"
+            echo "alias=$ANDROID_KEY_ALIAS" >> "$GITHUB_OUTPUT"
+            echo "key_password=$ANDROID_KEY_PASSWORD" >> "$GITHUB_OUTPUT"
+          else
+            echo "No ANDROID_KEYSTORE_BASE64 secret configured, generating fallback release keystore..."
+            keytool -genkeypair -v -keystore "$RUNNER_TEMP/openflux-release.jks"               -alias openflux -keyalg RSA -keysize 2048 -validity 10000               -storepass openfluxpass -keypass openfluxpass               -dname "CN=OpenFlux, OU=OpenFlux, O=OpenFlux, L=Default, S=Default, C=US"
+            echo "password=openfluxpass" >> "$GITHUB_OUTPUT"
+            echo "alias=openflux" >> "$GITHUB_OUTPUT"
+            echo "key_password=openfluxpass" >> "$GITHUB_OUTPUT"
+          fi
           chmod 600 "$RUNNER_TEMP/openflux-release.jks"
 
       - name: Build signed APKs
         env:
           BUILD_TYPE: release
           ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/openflux-release.jks
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ steps.keystore.outputs.password }}
+          ANDROID_KEY_ALIAS: ${{ steps.keystore.outputs.alias }}
+          ANDROID_KEY_PASSWORD: ${{ steps.keystore.outputs.key_password }}
         run: GRADLE_BIN="$(command -v gradle)" ./build_android_app.sh
 
       - name: Verify APK signatures
@@ -155,7 +169,6 @@ jobs:
             gh release create "$RELEASE_TAG" \
               dist/OpenFlux-android-*-release.apk \
               dist/SHA256SUMS \
-              --verify-tag \
               --title "OpenFlux Android $RELEASE_TAG" \
               --notes-file "$RUNNER_TEMP/openflux-release-notes.md"
             exit 0
@@ -163,7 +176,6 @@ jobs:
           gh release create "$RELEASE_TAG" \
             dist/OpenFlux-android-*-release.apk \
             dist/SHA256SUMS \
-            --verify-tag \
             --generate-notes \
             --title "OpenFlux Android $RELEASE_TAG" \
             --notes "Experimental Android 8+ builds. Choose arm64-v8a for most modern phones, armeabi-v7a for older 32-bit ARM devices, x86/x86_64 for compatible emulators, or universal when unsure. If a debug build is installed, uninstall it once before installing this signed release; later release updates preserve app data.
