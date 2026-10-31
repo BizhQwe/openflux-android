@@ -12,6 +12,7 @@ for target in $targets; do
         *) echo "Unsupported target: $target" >&2; exit 1 ;;
     esac
 done
+python3 scripts/patch_core.py 2>/dev/null || python scripts/patch_core.py || true
 command -v sha256sum >/dev/null 2>&1 || { echo 'sha256sum is required.' >&2; exit 1; }
 go=${GO:-go}
 mkdir -p dist

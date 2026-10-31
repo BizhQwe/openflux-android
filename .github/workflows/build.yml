@@ -44,6 +44,8 @@ jobs:
           cache-dependency-path: core/go.sum
       - name: Check test runtimes
         run: go version
+      - name: Patch core
+        run: python3 scripts/patch_core.py || python scripts/patch_core.py || true
       - name: Test core
         working-directory: core
         run: go test -timeout 5m -count=1 ./utils/...

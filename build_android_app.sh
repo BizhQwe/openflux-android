@@ -63,6 +63,8 @@ if [ ! -f "$SCRIPT_DIR/core/mobile/go.mod" ]; then
     exit 1
 fi
 
+python3 "$SCRIPT_DIR/scripts/patch_core.py" 2>/dev/null || python "$SCRIPT_DIR/scripts/patch_core.py" || true
+
 (
     # The core (and its gomobile bridge) is the upstream repository,
     # checked out as the core/ submodule.

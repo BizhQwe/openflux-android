@@ -10,7 +10,9 @@ import android.view.View;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.PopupWindow;
 import android.widget.TextView;
+import android.widget.Toast;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -44,13 +46,22 @@ final class LogsPage {
         header.setGravity(Gravity.CENTER_VERTICAL);
         TextView heading = app.text("Журнал событий", 25, app.text, true);
         header.addView(heading, new LinearLayout.LayoutParams(0, -2, 1f));
+        ImageButton save = app.iconButton(R.drawable.ic_share, "Сохранить или отправить журнал");
+        save.setOnClickListener(v -> {
+            app.tap(v);
+            showLogActionMenu(v);
+        });
+        LinearLayout.LayoutParams saveParams = new LinearLayout.LayoutParams(app.dp(44), app.dp(44));
+        saveParams.rightMargin = app.dp(8);
+        header.addView(save, saveParams);
+
         ImageButton clear = app.iconButton(R.drawable.ic_delete, "Очистить журнал");
         clear.setOnClickListener(v -> {
             app.tap(v);
             app.logs = "";
             renderLogs();
         });
-        header.addView(clear, new LinearLayout.LayoutParams(app.dp(48), app.dp(48)));
+        header.addView(clear, new LinearLayout.LayoutParams(app.dp(44), app.dp(44)));
         page.addView(header);
 
         TextView note = app.text("Логи хранятся только до закрытия приложения.", 11, app.secondary, false);
@@ -255,5 +266,47 @@ final class LogsPage {
             if (i < lines.length - 1) builder.append("\n");
         }
         return builder;
+    }
+
+    private void showLogActionMenu(View anchor) {
+        if (app.logs == null || app.logs.isEmpty()) {
+            Toast.makeText(app, "Журнал пуст", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        LinearLayout menu = new LinearLayout(app);
+        menu.setOrientation(LinearLayout.VERTICAL);
+        menu.setPadding(app.dp(5), app.dp(5), app.dp(5), app.dp(5));
+        menu.setBackground(app.rounded(app.surface, app.border, 1, ThemedActivity.TILE_RADIUS));
+        PopupWindow popup = new PopupWindow(menu, app.dp(260), -2, true);
+        popup.setElevation(app.dp(8));
+        popup.setOutsideTouchable(true);
+
+        String[] titles = {"Сохранить в файл", "Отправить…", "Скопировать всё"};
+        String[] details = {"Выбрать папку для сохранения .log", "Поделиться через мессенджер или почту", "Скопировать текст в буфер обмена"};
+        int[] icons = {R.drawable.ic_link, R.drawable.ic_share, R.drawable.ic_copy};
+        Runnable[] actions = {app::saveLogsToFile, app::shareLogsText, app::copyLogsToClipboard};
+
+        for (int i = 0; i < titles.length; i++) {
+            final int index = i;
+            LinearLayout row = new LinearLayout(app);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(app.dp(10), app.dp(10), app.dp(10), app.dp(10));
+            row.setBackground(app.ripple(Color.TRANSPARENT, 8));
+            row.addView(app.iconBubble(icons[i]), new LinearLayout.LayoutParams(app.dp(38), app.dp(38)));
+            LinearLayout copy = new LinearLayout(app);
+            copy.setOrientation(LinearLayout.VERTICAL);
+            LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(0, -2, 1f);
+            copyParams.leftMargin = app.dp(12);
+            copy.addView(app.text(titles[i], 14, app.text, true));
+            copy.addView(app.text(details[i], 11, app.secondary, false));
+            row.addView(copy, copyParams);
+            row.setOnClickListener(v -> {
+                app.tap(v);
+                popup.dismiss();
+                actions[index].run();
+            });
+            menu.addView(row, new LinearLayout.LayoutParams(-1, -2));
+        }
+        popup.showAsDropDown(anchor, anchor.getWidth() - app.dp(260), app.dp(4));
     }
 }

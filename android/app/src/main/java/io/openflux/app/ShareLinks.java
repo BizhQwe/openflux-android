@@ -1,7 +1,13 @@
 package io.openflux.app;
 
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -26,6 +32,64 @@ final class ShareLinks {
 
     ShareLinks(MainActivity app) {
         this.app = app;
+    }
+
+    void promptImportKey() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(app, app.darkMode
+                ? android.R.style.Theme_DeviceDefault_Dialog_Alert
+                : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert);
+        builder.setTitle("Импорт по ключу или ссылке");
+
+        LinearLayout container = new LinearLayout(app);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(app.dp(20), app.dp(12), app.dp(20), app.dp(8));
+
+        TextView hint = app.text("Вставьте ключ подключения или ссылку openflux://:", 13, app.secondary, false);
+        container.addView(hint);
+
+        EditText input = new EditText(app);
+        input.setHint("openflux://v1/...");
+        input.setSingleLine(false);
+        input.setMaxLines(5);
+        input.setTextSize(14);
+        input.setTextColor(app.text);
+        input.setHintTextColor(app.secondary);
+        input.setBackground(app.rounded(app.tonal(0.08f), app.border, 1, 10));
+        input.setPadding(app.dp(12), app.dp(10), app.dp(12), app.dp(10));
+        LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(-1, -2);
+        inputParams.topMargin = app.dp(10);
+        container.addView(input, inputParams);
+
+        ClipboardManager cm = (ClipboardManager) app.getSystemService(Context.CLIPBOARD_SERVICE);
+        if (cm != null && cm.hasPrimaryClip() && cm.getPrimaryClip() != null && cm.getPrimaryClip().getItemCount() > 0) {
+            CharSequence clip = cm.getPrimaryClip().getItemAt(0).getText();
+            if (clip != null) {
+                String clipStr = clip.toString().trim();
+                if (clipStr.startsWith("openflux://") || clipStr.startsWith("v1/")) {
+                    input.setText(clipStr);
+                    input.setSelection(clipStr.length());
+                }
+            }
+        }
+
+        builder.setView(container);
+        builder.setPositiveButton("Добавить", (dialog, which) -> {
+            String text = input.getText().toString().trim();
+            if (text.isEmpty()) {
+                Toast.makeText(app, "Введите ключ или ссылку", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!text.startsWith("openflux://")) {
+                if (text.startsWith("v1/")) {
+                    text = "openflux://" + text;
+                } else if (!text.contains("://")) {
+                    text = "openflux://v1/" + text;
+                }
+            }
+            importShareLink(text);
+        });
+        builder.setNegativeButton("Отмена", null);
+        builder.show();
     }
 
     void handleShareIntent(Intent intent) {

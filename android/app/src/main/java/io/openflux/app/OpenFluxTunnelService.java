@@ -57,7 +57,7 @@ public final class OpenFluxTunnelService extends VpnService {
     // service keeps running, and the uptime shown on Home must survive that.
     private static volatile long connectedAtMillis;
 
-    private final ExecutorService workers = Executors.newFixedThreadPool(3);
+    private final ExecutorService workers = Executors.newCachedThreadPool();
     private final Object outputLock = new Object();
     private final AtomicInteger generation = new AtomicInteger();
     private final AtomicBoolean awaitingCaptcha = new AtomicBoolean();

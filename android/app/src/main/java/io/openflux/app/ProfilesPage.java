@@ -78,18 +78,18 @@ final class ProfilesPage {
 
     private void showProfileActionMenu(View anchor) {
         showActionMenu(anchor,
-                new String[]{"Добавить профиль", "Установить ноду на VPS"},
-                new String[]{"Настроить транспорт и подключение", "Создать канал на своём сервере"},
-                new int[]{R.drawable.ic_add, R.drawable.ic_terminal},
-                new Runnable[]{() -> app.profileEditor.openProfileEditor(null), app::openNodeWizard});
+                new String[]{"Добавить вручную", "Импорт по ключу или ссылке", "Установить ноду на VPS"},
+                new String[]{"Настроить транспорт и подключение", "Вставить ключ или openflux://", "Создать канал на своём сервере"},
+                new int[]{R.drawable.ic_add, R.drawable.ic_key, R.drawable.ic_terminal},
+                new Runnable[]{() -> app.profileEditor.openProfileEditor(null), app.shareLinks::promptImportKey, app::openNodeWizard});
     }
 
     private void showQrActionMenu(View anchor) {
         showActionMenu(anchor,
-                new String[]{"Сканировать камерой", "Выбрать фото из галереи"},
-                new String[]{"Наведите камеру на QR-код", "Прочитать QR-код на снимке"},
-                new int[]{R.drawable.ic_qr_scan, R.drawable.ic_image},
-                new Runnable[]{app.shareLinks::scanShareQr, app.shareLinks::pickShareQrImage});
+                new String[]{"Сканировать камерой", "Выбрать фото из галереи", "Ввести ключ или ссылку"},
+                new String[]{"Наведите камеру на QR-код", "Прочитать QR-код на снимке", "Вставить ключ подключения openflux://"},
+                new int[]{R.drawable.ic_qr_scan, R.drawable.ic_image, R.drawable.ic_key},
+                new Runnable[]{app.shareLinks::scanShareQr, app.shareLinks::pickShareQrImage, app.shareLinks::promptImportKey});
     }
 
     private void showActionMenu(View anchor, String[] titles, String[] details, int[] icons, Runnable[] actions) {

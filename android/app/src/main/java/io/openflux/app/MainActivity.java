@@ -29,14 +29,21 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import java.io.OutputStream;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
@@ -67,6 +74,7 @@ public final class MainActivity extends ThemedActivity {
     private static final int NOTIFICATION_PERMISSION_REQUEST = 43;
     static final int QR_IMAGE_REQUEST = 45;
     static final int SCRIPT_SETTINGS_REQUEST = 47;
+    static final int SAVE_LOG_REQUEST = 48;
     static final int DEFAULT_MTU = 1400;
     private static final int PAGE_HOME = 0;
     static final int PAGE_PROFILES = 1;
@@ -255,6 +263,19 @@ public final class MainActivity extends ThemedActivity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == SAVE_LOG_REQUEST) {
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                try (OutputStream out = getContentResolver().openOutputStream(data.getData())) {
+                    if (out != null) {
+                        out.write(logs.getBytes(StandardCharsets.UTF_8));
+                        Toast.makeText(this, "Журнал сохранён в файл", Toast.LENGTH_SHORT).show();
+                    }
+                } catch (Exception e) {
+                    Toast.makeText(this, "Не удалось сохранить журнал: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            }
+            return;
+        }
         if (requestCode == QR_IMAGE_REQUEST) {
             if (resultCode == RESULT_OK && data != null && data.getData() != null) {
                 shareLinks.importQrImage(data.getData());
@@ -1010,5 +1031,46 @@ public final class MainActivity extends ThemedActivity {
         logs += value;
         if (logs.length() > 60000) logs = logs.substring(logs.length() - 40000);
         logsPage.renderLogs();
+    }
+
+    void saveLogsToFile() {
+        if (logs == null || logs.isEmpty()) {
+            Toast.makeText(this, "Журнал пуст", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String fileName = "openflux-" + new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(new Date()) + ".log";
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_TITLE, fileName);
+        try {
+            startActivityForResult(intent, SAVE_LOG_REQUEST);
+        } catch (Exception e) {
+            shareLogsText();
+        }
+    }
+
+    void shareLogsText() {
+        if (logs == null || logs.isEmpty()) {
+            Toast.makeText(this, "Журнал пуст", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent share = new Intent(Intent.ACTION_SEND);
+        share.setType("text/plain");
+        share.putExtra(Intent.EXTRA_SUBJECT, "OpenFlux Log");
+        share.putExtra(Intent.EXTRA_TEXT, logs);
+        startActivity(Intent.createChooser(share, "Отправить журнал"));
+    }
+
+    void copyLogsToClipboard() {
+        if (logs == null || logs.isEmpty()) {
+            Toast.makeText(this, "Журнал пуст", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (cm != null) {
+            cm.setPrimaryClip(ClipData.newPlainText("OpenFlux Logs", logs));
+            Toast.makeText(this, "Журнал скопирован в буфер", Toast.LENGTH_SHORT).show();
+        }
     }
 }
