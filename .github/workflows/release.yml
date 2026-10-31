@@ -100,7 +100,10 @@ jobs:
             echo "key_password=$ANDROID_KEY_PASSWORD" >> "$GITHUB_OUTPUT"
           else
             echo "No ANDROID_KEYSTORE_BASE64 secret configured, generating fallback release keystore..."
-            keytool -genkeypair -v -keystore "$RUNNER_TEMP/openflux-release.jks"               -alias openflux -keyalg RSA -keysize 2048 -validity 10000               -storepass openfluxpass -keypass openfluxpass               -dname "CN=OpenFlux, OU=OpenFlux, O=OpenFlux, L=Default, S=Default, C=US"
+            keytool -genkeypair -v -keystore "$RUNNER_TEMP/openflux-release.jks" \
+              -alias openflux -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass openfluxpass -keypass openfluxpass \
+              -dname "CN=OpenFlux, OU=OpenFlux, O=OpenFlux, L=Default, S=Default, C=US"
             echo "password=openfluxpass" >> "$GITHUB_OUTPUT"
             echo "alias=openflux" >> "$GITHUB_OUTPUT"
             echo "key_password=openfluxpass" >> "$GITHUB_OUTPUT"
@@ -143,18 +146,16 @@ jobs:
           retention-days: 90
 
       - name: Publish GitHub Release
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" \
-              dist/OpenFlux-android-*-release.apk \
-              dist/SHA256SUMS \
-              --clobber
-            exit 0
+          release_flags=(--latest)
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            release_flags=(--prerelease --latest=false)
           fi
-          # A hand-written description in .github/release-notes/<tag>.md wins
-          # over the generic one below.
+
+          # Prepare release notes
           notes=".github/release-notes/$RELEASE_TAG.md"
           upstream_url="https://github.com/p1neappleXpress/OpenFlux/releases/latest"
           if [ -f "$notes" ]; then
@@ -166,22 +167,40 @@ jobs:
                 printf 'Latest CLI and exit-node binaries: [upstream releases](%s).\n' "$upstream_url"
               fi
             } > "$RUNNER_TEMP/openflux-release-notes.md"
-            gh release create "$RELEASE_TAG" \
-              dist/OpenFlux-android-*-release.apk \
-              dist/SHA256SUMS \
-              --title "OpenFlux Android $RELEASE_TAG" \
-              --notes-file "$RUNNER_TEMP/openflux-release-notes.md"
-            exit 0
-          fi
-          gh release create "$RELEASE_TAG" \
-            dist/OpenFlux-android-*-release.apk \
-            dist/SHA256SUMS \
-            --generate-notes \
-            --title "OpenFlux Android $RELEASE_TAG" \
-            --notes "Experimental Android 8+ builds. Choose arm64-v8a for most modern phones, armeabi-v7a for older 32-bit ARM devices, x86/x86_64 for compatible emulators, or universal when unsure. If a debug build is installed, uninstall it once before installing this signed release; later release updates preserve app data.
+          else
+            cat <<EOF > "$RUNNER_TEMP/openflux-release-notes.md"
+          Experimental Android 8+ builds. Choose arm64-v8a for most modern phones, armeabi-v7a for older 32-bit ARM devices, x86/x86_64 for compatible emulators, or universal when unsure. If a debug build is installed, uninstall it once before installing this signed release; later release updates preserve app data.
 
           Последние сборки CLI и выходной ноды: $upstream_url.
 
           Latest CLI and exit-node binaries: $upstream_url.
 
-          Setup guide: https://github.com/damnurmum/OpenFlux-Android/blob/main/README.md (English) / https://github.com/damnurmum/OpenFlux-Android/blob/main/README.ru.md (Русский)."
+          Setup guide: https://github.com/damnurmum/OpenFlux-Android/blob/main/README.md (English) / https://github.com/damnurmum/OpenFlux-Android/blob/main/README.ru.md (Русский).
+          EOF
+          fi
+
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            echo "Release $RELEASE_TAG exists, updating title, notes, and cleaning non-apk assets..."
+            gh release edit "$RELEASE_TAG" \
+              --title "OpenFlux Android $RELEASE_TAG" \
+              --notes-file "$RUNNER_TEMP/openflux-release-notes.md" \
+              --draft=false \
+              "${release_flags[@]}"
+            for asset in $(gh release view "$RELEASE_TAG" --json assets --jq '.assets[]?.name // empty'); do
+              case "$asset" in
+                *.apk) ;;
+                *)
+                  echo "Deleting non-apk asset: $asset"
+                  gh release delete-asset "$RELEASE_TAG" "$asset" -y || true
+                  ;;
+              esac
+            done
+            gh release upload "$RELEASE_TAG" dist/OpenFlux-android-*-release.apk --clobber
+            exit 0
+          fi
+
+          gh release create "$RELEASE_TAG" \
+            dist/OpenFlux-android-*-release.apk \
+            --title "OpenFlux Android $RELEASE_TAG" \
+            --notes-file "$RUNNER_TEMP/openflux-release-notes.md" \
+            "${release_flags[@]}"
